@@ -1785,7 +1785,7 @@ namespace Anycubic {
         if(z_off <= -5) {
             return ;
         }
-        z_off -= 0.05f;
+        z_off -= 0.01f;
         setZOffset_mm(z_off);
 
         str_buf[0]=0;
@@ -1795,11 +1795,11 @@ namespace Anycubic {
 //        if (isAxisPositionKnown(Z)) {  // Move Z axis
 //          SERIAL_ECHOLNPAIR("Z now:", getAxisPosition_mm(Z));
 //          const float currZpos = getAxisPosition_mm(Z);
-//          setAxisPosition_mm(currZpos-0.05, Z);
+//          setAxisPosition_mm(currZpos-0.01, Z);
 //          SERIAL_ECHOLNPAIR("Z now:", getAxisPosition_mm(Z));
 //        }
 
-        int16_t steps = mmToWholeSteps(-0.05, Z);
+        int16_t steps = mmToWholeSteps(-0.01, Z);
         babystepAxis_steps(steps, Z);
 
         z_change = true;
@@ -1817,25 +1817,25 @@ namespace Anycubic {
         if(z_off >= 5) {
             return ;
         }
-        z_off += 0.05f;
+        z_off += 0.01f;
         setZOffset_mm(z_off);
   
         str_buf[0]=0;
         strcat(str_buf, ftostr(getZOffset_mm()));
         SendTxtToTFT(str_buf, TXT_LEVEL_OFFSET);
   
-  //          int16_t steps = mmToWholeSteps(constrain(Zshift,-0.05,0.05), Z);
+  //          int16_t steps = mmToWholeSteps(constrain(Zshift,-0.01,0.01), Z);
 
 /*
         if (isAxisPositionKnown(Z)) {  // Move Z axis
           SERIAL_ECHOLNPAIR("Z now:", getAxisPosition_mm(Z));
           const float currZpos = getAxisPosition_mm(Z);
-          setAxisPosition_mm(currZpos-0.05, Z);
+          setAxisPosition_mm(currZpos-0.01, Z);
           SERIAL_ECHOLNPAIR("Z now:", getAxisPosition_mm(Z));
         }
 */
 
-        int16_t steps = mmToWholeSteps(0.05, Z);
+        int16_t steps = mmToWholeSteps(0.01, Z);
         babystepAxis_steps(steps, Z);
 
         z_change = true;
@@ -2477,7 +2477,7 @@ namespace Anycubic {
                     return ;
                 }
                 
-                z_off = getZOffset_mm() - 0.0500f;
+                z_off = getZOffset_mm() - 0.0100f;
                 setZOffset_mm(z_off);
 
                 strcpy_P(str_buf, ftostr(z_off));
@@ -2485,7 +2485,7 @@ namespace Anycubic {
 
                 if (isAxisPositionKnown(Z)) {
                   const float currZpos = getAxisPosition_mm(Z);
-                  setAxisPosition_mm(currZpos-0.05, Z);
+                  setAxisPosition_mm(currZpos-0.01, Z);
                 }
 
                 setSoftEndstopState(true);
@@ -2498,7 +2498,7 @@ namespace Anycubic {
                 if(getZOffset_mm() >= 5) {
                     return ;
                 }
-                z_off = getZOffset_mm() + 0.0500f;
+                z_off = getZOffset_mm() + 0.0100f;
                 setZOffset_mm(z_off);
 
                 strcpy_P(str_buf, ftostr(z_off));
@@ -2506,7 +2506,7 @@ namespace Anycubic {
 
                 if (isAxisPositionKnown(Z)) {  // Move Z axis
                   const float currZpos = getAxisPosition_mm(Z);
-                  setAxisPosition_mm(currZpos+0.05, Z);
+                  setAxisPosition_mm(currZpos+0.01, Z);
                 }
 
                 setSoftEndstopState(true);
@@ -3612,14 +3612,14 @@ namespace Anycubic {
         if(z_off <= -5) {
             return ;
         }
-        z_off -= 0.05f;
+        z_off -= 0.01f;
         setZOffset_mm(z_off);
 
         str_buf[0]=0;
         strcat(str_buf, ftostr(getZOffset_mm()));
         SendTxtToTFT(str_buf, TXT_LEVEL_OFFSET);
 
-        int16_t steps = mmToWholeSteps(-0.05, Z);
+        int16_t steps = mmToWholeSteps(-0.01, Z);
         babystepAxis_steps(steps, Z);
 
         z_change = true;
@@ -3633,14 +3633,14 @@ namespace Anycubic {
         if(z_off >= 5) {
             return ;
         }
-        z_off += 0.05f;
+        z_off += 0.01f;
         setZOffset_mm(z_off);
   
         str_buf[0]=0;
         strcat(str_buf, ftostr(getZOffset_mm()));
         SendTxtToTFT(str_buf, TXT_LEVEL_OFFSET);
 
-        int16_t steps = mmToWholeSteps(0.05, Z);
+        int16_t steps = mmToWholeSteps(0.01, Z);
         babystepAxis_steps(steps, Z);
 
         z_change = true;
