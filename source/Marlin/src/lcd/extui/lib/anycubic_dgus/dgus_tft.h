@@ -36,7 +36,7 @@
 #include "../../ui_api.h"
 
 #define DEVICE_NAME             "Anycubic Kobra Plus"
-#define FIRMWARE_VER            "Kobra Plus V2.8.6"
+#define FIRMWARE_VER            "Kobra Plus V2.8.6 c1"
 #define BUILD_VOLUME            "300*300*350 (mm)"
 #define TECH_SUPPORT            "https://www.anycubic.com"
 
