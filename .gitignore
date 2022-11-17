@@ -88,3 +88,4 @@ project/*.bin
 /SI/*
 *.si4project/
 
+workspace/RTE/_firmware_Release/RTE_Components.h
