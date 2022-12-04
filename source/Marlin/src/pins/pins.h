@@ -21,6 +21,10 @@
  */
 #pragma once
 
+#include "../board/startup.h"
+#include "../core/boards.h"
+#include "../../Configuration.h"
+
 /**
  * File: pins/pins.h
  *

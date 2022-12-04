@@ -23,6 +23,8 @@
 
 #include "inc/MarlinConfig.h"
 
+#include "../board/startup.h"
+
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
