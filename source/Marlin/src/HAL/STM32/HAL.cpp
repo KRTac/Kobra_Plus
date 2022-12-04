@@ -20,24 +20,55 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  */
+#include "../platforms.h"
 
+#ifdef HAL_STM32
 
 #include "../../inc/MarlinConfig.h"
 #include "../shared/Delay.h"
-#include "HAL.h"
-#include "bsp_rmu.h"
 
+#include "usb_serial.h"
+
+#ifdef USBCON
+  DefaultSerial1 MSerialUSB(false, SerialUSB);
+#endif
+
+#if ENABLED(SRAM_EEPROM_EMULATION)
+  #if STM32F7xx
+    #include <stm32f7xx_ll_pwr.h>
+  #elif STM32F4xx
+    #include <stm32f4xx_ll_pwr.h>
+  #else
+    #error "SRAM_EEPROM_EMULATION is currently only supported for STM32F4xx and STM32F7xx"
+  #endif
+#endif
+
+#if HAS_SD_HOST_DRIVE
+  #include "msc_sd.h"
+  #include "usbd_cdc_if.h"
+#endif
 
 // ------------------------
 // Public Variables
 // ------------------------
 
-uint16_t HAL_adc_result;
+uint16_t MarlinHAL::adc_result;
+
+// ------------------------
+// Public functions
+// ------------------------
+
+#if ENABLED(POSTMORTEM_DEBUGGING)
+  extern void install_min_serial();
+#endif
 
 // HAL initialization task
-void HAL_init() {
-  NVIC_SetPriorityGrouping(0x3);
-  FastIO_init();
+void MarlinHAL::init() {
+  // Ensure F_CPU is a constant expression.
+  // If the compiler breaks here, it means that delay code that should compute at compile time will not work.
+  // So better safe than sorry here.
+  constexpr int cpuFreq = F_CPU;
+  UNUSED(cpuFreq);
 
   #if ENABLED(SDSUPPORT) && DISABLED(SDIO_SUPPORT) && (defined(SDSS) && SDSS != -1)
     OUT_WRITE(SDSS, HIGH); // Try to set SDSS inactive before any other SPI users start up
@@ -47,65 +78,105 @@ void HAL_init() {
     OUT_WRITE(LED_PIN, LOW);
   #endif
 
-  #if PIN_EXISTS(AUTO_LEVEL_TX)
-    OUT_WRITE(AUTO_LEVEL_TX_PIN, HIGH);
-    delay(10);
-    OUT_WRITE(AUTO_LEVEL_TX_PIN, LOW);
-    delay(300);
-    OUT_WRITE(AUTO_LEVEL_TX_PIN, HIGH);
+  #if ENABLED(SRAM_EEPROM_EMULATION)
+    __HAL_RCC_PWR_CLK_ENABLE();
+    HAL_PWR_EnableBkUpAccess();           // Enable access to backup SRAM
+    __HAL_RCC_BKPSRAM_CLK_ENABLE();
+    LL_PWR_EnableBkUpRegulator();         // Enable backup regulator
+    while (!LL_PWR_IsActiveFlag_BRR());   // Wait until backup regulator is initialized
   #endif
 
-  //SetTimerInterruptPriorities();
+  SetTimerInterruptPriorities();
 
-  #if ENABLED(EMERGENCY_PARSER) && USBD_USE_CDC
+  #if ENABLED(EMERGENCY_PARSER) && (USBD_USE_CDC || USBD_USE_CDC_MSC)
     USB_Hook_init();
   #endif
+
+  TERN_(POSTMORTEM_DEBUGGING, install_min_serial());    // Install the min serial handler
+
+  TERN_(HAS_SD_HOST_DRIVE, MSC_SD_init());              // Enable USB SD card access
+
+  #if PIN_EXISTS(USB_CONNECT)
+    OUT_WRITE(USB_CONNECT_PIN, !USB_CONNECT_INVERTING); // USB clear connection
+    delay(1000);                                        // Give OS time to notice
+    WRITE(USB_CONNECT_PIN, USB_CONNECT_INVERTING);
+  #endif
 }
 
-void HAL_clear_reset_source()
-{
-    rmu_clear_reset_cause();
+// HAL idle task
+void MarlinHAL::idletask() {
+  #if HAS_SHARED_MEDIA
+    // Stm32duino currently doesn't have a "loop/idle" method
+    CDC_resume_receive();
+    CDC_continue_transmit();
+  #endif
 }
 
-uint8_t HAL_get_reset_source()
-{
-    uint8_t res;
+void MarlinHAL::reboot() { NVIC_SystemReset(); }
 
-    res = rmu_get_reset_cause();
-
-    return res;
+uint8_t MarlinHAL::get_reset_source() {
+  return
+    #ifdef RCC_FLAG_IWDGRST // Some sources may not exist...
+      RESET != __HAL_RCC_GET_FLAG(RCC_FLAG_IWDGRST)  ? RST_WATCHDOG :
+    #endif
+    #ifdef RCC_FLAG_IWDG1RST
+      RESET != __HAL_RCC_GET_FLAG(RCC_FLAG_IWDG1RST) ? RST_WATCHDOG :
+    #endif
+    #ifdef RCC_FLAG_IWDG2RST
+      RESET != __HAL_RCC_GET_FLAG(RCC_FLAG_IWDG2RST) ? RST_WATCHDOG :
+    #endif
+    #ifdef RCC_FLAG_SFTRST
+      RESET != __HAL_RCC_GET_FLAG(RCC_FLAG_SFTRST)   ? RST_SOFTWARE :
+    #endif
+    #ifdef RCC_FLAG_PINRST
+      RESET != __HAL_RCC_GET_FLAG(RCC_FLAG_PINRST)   ? RST_EXTERNAL :
+    #endif
+    #ifdef RCC_FLAG_PORRST
+      RESET != __HAL_RCC_GET_FLAG(RCC_FLAG_PORRST)   ? RST_POWER_ON :
+    #endif
+    0
+  ;
 }
 
-void _delay_ms(const int delay_ms) { delay(delay_ms); }
+void MarlinHAL::clear_reset_source() { __HAL_RCC_CLEAR_RESET_FLAGS(); }
+
+// ------------------------
+// Watchdog Timer
+// ------------------------
+
+#if ENABLED(USE_WATCHDOG)
+
+  #define WDT_TIMEOUT_US TERN(WATCHDOG_DURATION_8S, 8000000, 4000000) // 4 or 8 second timeout
+
+  #include <IWatchdog.h>
+
+  void MarlinHAL::watchdog_init() {
+    IF_DISABLED(DISABLE_WATCHDOG_INIT, IWatchdog.begin(WDT_TIMEOUT_US));
+  }
+
+  void MarlinHAL::watchdog_refresh() {
+    IWatchdog.reload();
+    #if DISABLED(PINS_DEBUGGING) && PIN_EXISTS(LED)
+      TOGGLE(LED_PIN);  // heartbeat indicator
+    #endif
+  }
+
+#endif
 
 extern "C" {
   extern unsigned int _ebss; // end of bss section
 }
 
-uint32_t AD_DMA[3];
+// Reset the system to initiate a firmware flash
+WEAK void flashFirmware(const int16_t) { hal.reboot(); }
 
-// ------------------------
-// ADC
-// ------------------------
-// Init the AD in continuous capture mode
-void HAL_adc_init() {}
-//TODO: Make sure this doesn't cause any delay
-void HAL_adc_start_conversion(const uint8_t adc_pin) {
-        if(adc_pin>BOARD_NR_GPIO_PINS)return;
-        uint8_t channel = PIN_MAP[adc_pin].adc_channel;
-        DDL_ASSERT(channel!=ADC_PIN_INVALID);
-        HAL_adc_result = adc_read(ADC1,channel);
-        switch(adc_pin)
-        {
-            case TEMP_BED_PIN: AD_DMA[0] = HAL_adc_result;break;
-            case TEMP_0_PIN: AD_DMA[1] = HAL_adc_result;break;
-            case POWER_MONITOR_VOLTAGE_PIN: AD_DMA[2] = HAL_adc_result;break;
-            default:break;
-        }
+// Maple Compatibility
+volatile uint32_t systick_uptime_millis = 0;
+systickCallback_t systick_user_callback;
+void systick_attach_callback(systickCallback_t cb) { systick_user_callback = cb; }
+void HAL_SYSTICK_Callback() {
+  systick_uptime_millis++;
+  if (systick_user_callback) systick_user_callback();
 }
-uint16_t HAL_adc_get_result() {return 1000;} // { return HAL_adc_result; }
 
-// Reset the system (to initiate a firmware flash)
-void flashFirmware(const int16_t) { NVIC_SystemReset(); }
-
-
+#endif // HAL_STM32

@@ -26,19 +26,6 @@
 #include <stdint.h>
 
 #include "../../libs/crc16.h"
-#include "../../cores/flash.h"
-
-
-enum 
-{
-  FLASHIF_OK = 0,
-  FLASHIF_ERASEKO,
-  FLASHIF_WRITINGCTRL_ERROR,
-  FLASHIF_WRITING_ERROR,
-  FLASHIF_PROTECTION_ERRROR
-};
-
-
 
 class PersistentStore {
 public:
@@ -58,11 +45,11 @@ public:
 
   // Read one or more bytes of data and update the CRC
   // Return 'true' on read error
-  static bool read_data(int &pos, uint8_t* value, size_t size, uint16_t *crc, const bool writing=true);
+  static bool read_data(int &pos, uint8_t *value, size_t size, uint16_t *crc, const bool writing=true);
 
   // Write one or more bytes of data
   // Return 'true' on write error
-  static inline bool write_data(const int pos, const uint8_t* value, const size_t size=sizeof(uint8_t)) {
+  static bool write_data(const int pos, const uint8_t *value, const size_t size=sizeof(uint8_t)) {
     int data_pos = pos;
     uint16_t crc = 0;
     return write_data(data_pos, value, size, &crc);
@@ -70,19 +57,15 @@ public:
 
   // Write a single byte of data
   // Return 'true' on write error
-  static inline bool write_data(const int pos, const uint8_t value) { return write_data(pos, &value); }
+  static bool write_data(const int pos, const uint8_t value) { return write_data(pos, &value); }
 
   // Read one or more bytes of data
   // Return 'true' on read error
-  static inline bool read_data(const int pos, uint8_t* value, const size_t size=1) {
+  static bool read_data(const int pos, uint8_t *value, const size_t size=1) {
     int data_pos = pos;
     uint16_t crc = 0;
     return read_data(data_pos, value, size, &crc);
   }
-
-  static uint32_t FLASH_If_Erase(uint32_t addr_start, uint32_t addr_end);
-
-  static uint32_t FLASH_If_Write(uint32_t destination, const void *p_source, uint32_t length);
 };
 
 extern PersistentStore persistentStore;

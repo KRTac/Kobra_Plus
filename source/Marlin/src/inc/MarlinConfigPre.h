@@ -29,14 +29,13 @@
 // Prefix header to acquire configurations
 //
 #include <stdint.h>
-#include "../board/startup.h"
 
 #ifndef __MARLIN_DEPS__
   #include "../HAL/platforms.h"
 #endif
 
-#include "../core/boards.h"
 #include "../core/macros.h"
+#include "../core/boards.h"
 #include "../../Configuration.h"
 
 #ifdef CUSTOM_VERSION_FILE
