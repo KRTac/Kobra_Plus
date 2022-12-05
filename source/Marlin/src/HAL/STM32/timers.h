@@ -22,6 +22,9 @@
 #pragma once
 
 #include "../../inc/MarlinConfig.h"
+#include <stdint.h>
+#include "../board/startup.h"
+#include "../../core/boards.h"
 
 // ------------------------
 // Defines
@@ -40,8 +43,10 @@
 #define hal_timer_t uint32_t
 #define HAL_TIMER_TYPE_MAX UINT16_MAX
 
+#define HAL_TIMER_RATE uint32_t(F_CPU)  // frequency of timers peripherals
+
 // Marlin timer_instance[] content (unrelated to timer selection)
-#define MF_TIMER_STEP       0  // Timer Index for Stepper
+#define MF_TIMER_STEP       2  // Timer Index for Stepper
 #define MF_TIMER_TEMP       1  // Timer Index for Temperature
 #define MF_TIMER_PULSE      MF_TIMER_STEP
 
@@ -60,22 +65,23 @@ extern uint32_t GetStepperTimerClkFreq();
 #define PULSE_TIMER_PRESCALE STEPPER_TIMER_PRESCALE
 #define PULSE_TIMER_TICKS_PER_US STEPPER_TIMER_TICKS_PER_US
 
-#define ENABLE_STEPPER_DRIVER_INTERRUPT() HAL_timer_enable_interrupt(MF_TIMER_STEP)
-#define DISABLE_STEPPER_DRIVER_INTERRUPT() HAL_timer_disable_interrupt(MF_TIMER_STEP)
+#define ENABLE_STEPPER_DRIVER_INTERRUPT() timer_enable_irq(MF_TIMER_STEP, Enable)
+#define DISABLE_STEPPER_DRIVER_INTERRUPT() timer_enable_irq(MF_TIMER_STEP, Disable)
 #define STEPPER_ISR_ENABLED() HAL_timer_interrupt_enabled(MF_TIMER_STEP)
 
-#define ENABLE_TEMPERATURE_INTERRUPT() HAL_timer_enable_interrupt(MF_TIMER_TEMP)
-#define DISABLE_TEMPERATURE_INTERRUPT() HAL_timer_disable_interrupt(MF_TIMER_TEMP)
+#define ENABLE_TEMPERATURE_INTERRUPT() timer_enable_irq(MF_TIMER_TEMP, Enable)
+#define DISABLE_TEMPERATURE_INTERRUPT() timer_enable_irq(MF_TIMER_TEMP, Disable)
 
 extern void Step_Handler();
 extern void Temp_Handler();
 
 #ifndef HAL_STEP_TIMER_ISR
-  #define HAL_STEP_TIMER_ISR() void Step_Handler()
+  #define HAL_STEP_TIMER_ISR() void timer42_zero_match_irq_cb(void)
 #endif
 #ifndef HAL_TEMP_TIMER_ISR
-  #define HAL_TEMP_TIMER_ISR() void Temp_Handler()
+  #define HAL_TEMP_TIMER_ISR() void timer41_zero_match_irq_cb(void)
 #endif
+#define HAL_TONE_TIMER_ISR()      void Timer01B_CallBack(void)
 
 // ------------------------
 // Public Variables
@@ -101,20 +107,24 @@ FORCE_INLINE bool HAL_timer_initialized(const uint8_t timer_num) {
   return timer_instance[timer_num] != nullptr;
 }
 FORCE_INLINE static hal_timer_t HAL_timer_get_count(const uint8_t timer_num) {
-  return HAL_timer_initialized(timer_num) ? timer_instance[timer_num]->getCount() : 0;
+  return HAL_timer_initialized(timer_num) ? timer_get_count(timer_num) : 0;
 }
 
 // NOTE: Method name may be misleading.
 // STM32 has an Auto-Reload Register (ARR) as opposed to a "compare" register
-FORCE_INLINE static void HAL_timer_set_compare(const uint8_t timer_num, const hal_timer_t overflow) {
-  if (HAL_timer_initialized(timer_num)) {
-    timer_instance[timer_num]->setOverflow(overflow + 1, TICK_FORMAT); // Value decremented by setOverflow()
-    // wiki: "force all registers (Autoreload, prescaler, compare) to be taken into account"
-    // So, if the new overflow value is less than the count it will trigger a rollover interrupt.
-    if (overflow < timer_instance[timer_num]->getCount())  // Added 'if' here because reports say it won't boot without it
-      timer_instance[timer_num]->refresh();
-  }
-}
+
+FORCE_INLINE static void HAL_timer_set_compare(const uint8_t timer_num, const hal_timer_t compare);
 
 #define HAL_timer_isr_prologue(T) NOOP
-#define HAL_timer_isr_epilogue(T) NOOP
+//#define HAL_timer_isr_epilogue(T) NOOP
+
+static inline void HAL_timer_isr_epilogue(uint8_t timer_num)
+{
+    if(timer_num == MF_TIMER_TEMP) {
+        TIMER4_CNT_ClearIrqFlag(M4_TMR41, Timer4CntZeroMatchInt);
+    } else if(timer_num == MF_TIMER_STEP) {
+        TIMER4_CNT_ClearIrqFlag(M4_TMR42, Timer4CntZeroMatchInt);
+    }
+}
+
+#define TIMER_OC_NO_PRELOAD 0 // Need to disable preload also on compare registers.

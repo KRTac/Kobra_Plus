@@ -67,10 +67,6 @@ public:
     uint16_t crc = 0;
     return read_data(data_pos, value, size, &crc);
   }
-
-  static uint32_t FLASH_If_Erase(uint32_t addr_start, uint32_t addr_end);
-
-  static uint32_t FLASH_If_Write(uint32_t destination, const void *p_source, uint32_t length);
 };
 
 extern PersistentStore persistentStore;

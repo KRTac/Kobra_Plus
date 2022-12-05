@@ -268,6 +268,12 @@ void HAL_SD_MspInit(SD_HandleTypeDef *hsd) {
   }
 
   bool SDIO_Init() {
+    bool resp = steup_sdio();
+    hsd.Instance = SDIO;
+    hsd.State = HAL_SD_STATE_READY;
+
+	  return resp; // taken from stock
+
     uint8_t retryCnt = SDIO_READ_RETRIES;
 
     bool status;
@@ -377,6 +383,10 @@ void HAL_SD_MspInit(SD_HandleTypeDef *hsd) {
  * @return true on success
  */
 bool SDIO_ReadBlock(uint32_t block, uint8_t *dst) {
+  uint32_t retries = 3;
+  while (retries--) if (SDIO_ReadBlock_DMA(block, dst)) return true;
+	return false;
+
   #ifdef SDIO_FOR_STM32H7
 
     uint32_t timeout = HAL_GetTick() + SD_TIMEOUT;
@@ -413,6 +423,7 @@ bool SDIO_ReadBlock(uint32_t block, uint8_t *dst) {
  * @return true on success
  */
 bool SDIO_WriteBlock(uint32_t block, const uint8_t *src) {
+	return SDIO_WriteBlockDMA(block, src);
   #ifdef SDIO_FOR_STM32H7
 
     uint32_t timeout = HAL_GetTick() + SD_TIMEOUT;
@@ -444,7 +455,7 @@ bool SDIO_IsReady() {
 }
 
 uint32_t SDIO_GetCardSize() {
-  return (uint32_t)(hsd.SdCard.BlockNbr) * (hsd.SdCard.BlockSize);
+  return (uint32_t) 0;
 }
 
 #endif // SDIO_SUPPORT

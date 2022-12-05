@@ -33,10 +33,10 @@ void setup_temp_tim(const uint32_t frequency)
 void timer_enable_irq(const uint8_t timer_num,en_functional_state_t state)
 {
     switch (timer_num) {
-        case STEP_TIMER_NUM:
+        case MF_TIMER_STEP:
             timer42_irq_ctrl(state);
             break;
-        case TEMP_TIMER_NUM:
+        case MF_TIMER_TEMP:
 
             break;
     }
@@ -46,11 +46,11 @@ bool timer_irq_enabled(M4_TMR0_TypeDef* pstcTim0Reg, const uint8_t timer_num)
 {
     bool state;
     switch (timer_num) {
-        case STEP_TIMER_NUM:
+        case MF_TIMER_STEP:
             state = timer42_irq_get();
             break;
 
-        case TEMP_TIMER_NUM:
+        case MF_TIMER_TEMP:
 
         break;
     }
@@ -61,11 +61,11 @@ bool timer_irq_enabled(M4_TMR0_TypeDef* pstcTim0Reg, const uint8_t timer_num)
 en_result_t timer_set_compare(const uint8_t timer_num,const uint16_t compare)
 {
     switch (timer_num) {
-        case STEP_TIMER_NUM:
+        case MF_TIMER_STEP:
             timer42_set_compare(compare);
             break;
 
-        case TEMP_TIMER_NUM:
+        case MF_TIMER_TEMP:
 
             break;
     }
@@ -76,11 +76,11 @@ uint16_t timer_get_count(const uint8_t timer_num)
     uint16_t count = 0;
 
     switch (timer_num) {
-        case STEP_TIMER_NUM:
+        case MF_TIMER_STEP:
             count = timer42_get_count();
             break;
 
-        case TEMP_TIMER_NUM:
+        case MF_TIMER_TEMP:
 
         break;
     }

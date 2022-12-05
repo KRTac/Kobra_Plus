@@ -24,6 +24,8 @@
 #ifdef HAL_STM32
 
 #include "../../inc/MarlinConfig.h"
+#include "HAL.h"
+#include "timers.h"
 
 // ------------------------
 // Local defines
@@ -122,6 +124,12 @@ uint32_t GetStepperTimerClkFreq() {
 
 // frequency is in Hertz
 void HAL_timer_start(const uint8_t timer_num, const uint32_t frequency) {
+ 	 switch (timer_num) {
+    		case MF_TIMER_STEP: setup_step_tim(frequency);break;
+    		case MF_TIMER_TEMP: setup_temp_tim(frequency);break;
+ 	 }
+
+   return;
   if (!HAL_timer_initialized(timer_num)) {
     switch (timer_num) {
       case MF_TIMER_STEP: // STEPPER TIMER - use a 32bit timer if possible
@@ -174,6 +182,11 @@ void HAL_timer_start(const uint8_t timer_num, const uint32_t frequency) {
 }
 
 void HAL_timer_enable_interrupt(const uint8_t timer_num) {
+  switch (timer_num) {
+    case MF_TIMER_STEP: ENABLE_STEPPER_DRIVER_INTERRUPT(); break;
+    case MF_TIMER_TEMP: ENABLE_TEMPERATURE_INTERRUPT(); break;
+  }
+  return;
   if (HAL_timer_initialized(timer_num) && !timer_instance[timer_num]->hasInterrupt()) {
     switch (timer_num) {
       case MF_TIMER_STEP:
@@ -187,11 +200,29 @@ void HAL_timer_enable_interrupt(const uint8_t timer_num) {
 }
 
 void HAL_timer_disable_interrupt(const uint8_t timer_num) {
+  switch (timer_num) {
+    case MF_TIMER_STEP: DISABLE_STEPPER_DRIVER_INTERRUPT(); break;
+    case MF_TIMER_TEMP: DISABLE_TEMPERATURE_INTERRUPT(); break;
+  }
+  return;
   if (HAL_timer_initialized(timer_num)) timer_instance[timer_num]->detachInterrupt();
 }
 
 bool HAL_timer_interrupt_enabled(const uint8_t timer_num) {
+	return timer_irq_enabled(TMR_UNIT,timer_num);
   return HAL_timer_initialized(timer_num) && timer_instance[timer_num]->hasInterrupt();
+}
+
+void HAL_timer_set_compare(const uint8_t timer_num, const hal_timer_t compare) {
+    switch (timer_num) {
+        case MF_TIMER_STEP:
+            timer_set_compare(timer_num, compare);
+            break;
+
+        case MF_TIMER_TEMP:
+
+            break;
+    }
 }
 
 void SetTimerInterruptPriorities() {
