@@ -26,6 +26,8 @@
 
 #include "../../inc/MarlinConfig.h"
 #include "../shared/Delay.h"
+#include "bsp_rmu.h"
+#include "../cores/iwdg.h"
 
 #include "usb_serial.h"
 
@@ -69,6 +71,7 @@ void MarlinHAL::init() {
   // So better safe than sorry here.
   constexpr int cpuFreq = F_CPU;
   UNUSED(cpuFreq);
+  NVIC_SetPriorityGrouping(0x3);
 
   #if ENABLED(SDSUPPORT) && DISABLED(SDIO_SUPPORT) && (defined(SDSS) && SDSS != -1)
     OUT_WRITE(SDSS, HIGH); // Try to set SDSS inactive before any other SPI users start up
@@ -115,6 +118,7 @@ void MarlinHAL::idletask() {
 void MarlinHAL::reboot() { NVIC_SystemReset(); }
 
 uint8_t MarlinHAL::get_reset_source() {
+  return rmu_get_reset_cause();
   return
     #ifdef RCC_FLAG_IWDGRST // Some sources may not exist...
       RESET != __HAL_RCC_GET_FLAG(RCC_FLAG_IWDGRST)  ? RST_WATCHDOG :
@@ -138,7 +142,7 @@ uint8_t MarlinHAL::get_reset_source() {
   ;
 }
 
-void MarlinHAL::clear_reset_source() { __HAL_RCC_CLEAR_RESET_FLAGS(); }
+void MarlinHAL::clear_reset_source() { rmu_clear_reset_cause(); }
 
 // ------------------------
 // Watchdog Timer
@@ -149,12 +153,23 @@ void MarlinHAL::clear_reset_source() { __HAL_RCC_CLEAR_RESET_FLAGS(); }
   #define WDT_TIMEOUT_US TERN(WATCHDOG_DURATION_8S, 8000000, 4000000) // 4 or 8 second timeout
 
   #include <IWatchdog.h>
+  bool wdt_init_flag = false;
 
   void MarlinHAL::watchdog_init() {
-    IF_DISABLED(DISABLE_WATCHDOG_INIT, IWatchdog.begin(WDT_TIMEOUT_US));
+    iwdg_init();
+    wdt_init_flag = true;
+
+    //IF_DISABLED(DISABLE_WATCHDOG_INIT, IWatchdog.begin(WDT_TIMEOUT_US));
   }
 
   void MarlinHAL::watchdog_refresh() {
+    if (!wdt_init_flag) {
+      return;
+    }
+
+    iwdg_feed();
+    
+    return;
     IWatchdog.reload();
     #if DISABLED(PINS_DEBUGGING) && PIN_EXISTS(LED)
       TOGGLE(LED_PIN);  // heartbeat indicator
@@ -168,7 +183,7 @@ extern "C" {
 }
 
 // Reset the system to initiate a firmware flash
-WEAK void flashFirmware(const int16_t) { hal.reboot(); }
+WEAK void flashFirmware(const int16_t) { NVIC_SystemReset(); }
 
 // Maple Compatibility
 volatile uint32_t systick_uptime_millis = 0;

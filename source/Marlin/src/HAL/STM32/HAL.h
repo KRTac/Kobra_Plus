@@ -34,7 +34,11 @@
 
 #include "../../inc/MarlinConfigPre.h"
 
+#include "../cores/iwdg.h"
+
 #include <stdint.h>
+
+#define STM32F1_WD_RELOAD 625
 
 //
 // Default graphical display delays
@@ -250,7 +254,7 @@ public:
 
   // Called by Temperature::init once at startup
   static void adc_init() {
-    analogReadResolution(HAL_ADC_RESOLUTION);
+    //analogReadResolution(HAL_ADC_RESOLUTION);
   }
 
   // Called by Temperature::init for each sensor at startup
@@ -263,7 +267,7 @@ public:
   static bool adc_ready() { return true; }
 
   // The current value of the ADC register
-  static uint16_t adc_value() { return adc_result; }
+  static uint16_t adc_value() { return 1000; }
 
   /**
    * Set the PWM duty cycle for the pin to the given value.
