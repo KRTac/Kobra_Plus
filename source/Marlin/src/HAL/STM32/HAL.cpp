@@ -72,6 +72,7 @@ void MarlinHAL::init() {
   constexpr int cpuFreq = F_CPU;
   UNUSED(cpuFreq);
   NVIC_SetPriorityGrouping(0x3);
+  FastIO_init();
 
   #if ENABLED(SDSUPPORT) && DISABLED(SDIO_SUPPORT) && (defined(SDSS) && SDSS != -1)
     OUT_WRITE(SDSS, HIGH); // Try to set SDSS inactive before any other SPI users start up
@@ -89,7 +90,7 @@ void MarlinHAL::init() {
     while (!LL_PWR_IsActiveFlag_BRR());   // Wait until backup regulator is initialized
   #endif
 
-  SetTimerInterruptPriorities();
+  //SetTimerInterruptPriorities();
 
   #if ENABLED(EMERGENCY_PARSER) && (USBD_USE_CDC || USBD_USE_CDC_MSC)
     USB_Hook_init();
@@ -168,7 +169,7 @@ void MarlinHAL::clear_reset_source() { rmu_clear_reset_cause(); }
     }
 
     iwdg_feed();
-    
+
     return;
     IWatchdog.reload();
     #if DISABLED(PINS_DEBUGGING) && PIN_EXISTS(LED)
